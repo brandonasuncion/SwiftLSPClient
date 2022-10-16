@@ -48,8 +48,8 @@ public class StdioDataTransport: DataTransport {
     }
     
     public func setReaderHandler(_ handler: @escaping (Data) -> Void) {
-        queue.sync { [unowned self] in
-            self.readHandler = handler
+        queue.sync { [weak self] in
+            self?.readHandler = handler
         }
     }
 
@@ -69,47 +69,47 @@ public class StdioDataTransport: DataTransport {
     }
 
     private func setupFileHandleHandlers() {
-        stdoutPipe.fileHandleForReading.readabilityHandler = { [unowned self] (handle) in
+        stdoutPipe.fileHandleForReading.readabilityHandler = { [weak self] (handle) in
             let data = handle.availableData
 
             guard data.count > 0 else {
                 return
             }
 
-            self.forwardDataToHandler(data)
+            self?.forwardDataToHandler(data)
         }
 
-        stderrPipe.fileHandleForReading.readabilityHandler = { [unowned self] (handle) in
+        stderrPipe.fileHandleForReading.readabilityHandler = { [weak self] (handle) in
             let data = handle.availableData
 
             guard data.count > 0 else {
                 return
             }
 
-            self.forwardErrorDataToHandler(data)
+            self?.forwardErrorDataToHandler(data)
         }
     }
 
     private func forwardDataToHandler(_ data: Data) {
-        queue.async { [unowned self] in
-            if self.closed {
+        queue.async { [weak self] in
+            if self?.closed ?? true {
                 return
             }
 
-            self.readHandler?(data)
+            self?.readHandler?(data)
         }
     }
 
     private func forwardErrorDataToHandler(_ data: Data) {
-        queue.async { [unowned self] in
-            if self.closed {
+        queue.async { [weak self] in
+            if self?.closed ?? true {
                 return
             }
 
             // Just print for now. Perhaps provide a way to hook
             // this up to a caller?
             if let string = String(bytes: data, encoding: .utf8) {
-                if #available(OSX 10.12, *), let log = self.log {
+                if #available(OSX 10.12, *), let log = self?.log {
                     os_log("stderr: %{public}@", log: log, type: .error, string)
                 } else {
                     print("stderr: \(string)")
